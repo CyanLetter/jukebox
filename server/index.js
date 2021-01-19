@@ -117,6 +117,7 @@ export default (app, http) => {
 
 		// if items are still in playlist, start where we left off
 		checkPlaybackState();
+		checkDownloadState();
 	}
 
 	function sortSearchResults(results) {
@@ -150,6 +151,12 @@ export default (app, http) => {
 				continue;
 			}
 
+			// skip entries which do not have a valid name or video ID
+			// likely an issue with youtube results
+			if (typeof entry.videoId !== "string" || typeof entry.name !== "string") {
+				continue;
+			}
+
 			// add to array
 			newResults[type].push(entry);
 		}
@@ -174,6 +181,7 @@ export default (app, http) => {
 
 		if (inPlayQueue) {
 			console.log("Rejected, song already in playlist");
+			checkPlaybackState();
 			return "Rejected, song already in playlist";
 		}
 
@@ -184,6 +192,7 @@ export default (app, http) => {
 
 		if (inDownloadQueue) {
 			console.log("Rejected, song already in download queue");
+			checkDownloadState();
 			return "Rejected, song already in download queue";
 		}
 
@@ -214,9 +223,9 @@ export default (app, http) => {
 		checkDownloadState();
 	}
 
-	function removeFromDownloadQueue(videoId) {
+	function removeFromDownloadQueue() {
 		queue.get('downloadQueue')
-			.remove({ videoId: videoId })
+			.shift()
 			.write();
 	}
 
@@ -241,40 +250,73 @@ export default (app, http) => {
 
 	function downloadSong(data) {
 		downloading = true;
+		console.log(data);
+		var newData = {};
 
-		var dir = path.join("./storage/music/", data.artist.name); 
-		var fileName = data.name + ".mp3";
-		var filePath = path.join(dir, fileName); 
-
-		console.log("Path: " + filePath);
-		if (!fs.existsSync(dir)){
-			fs.mkdirSync(dir);
+		try {
+			newData = createLibraryPath(data);
+		} catch(e) {
+			console.error(e);
+			onDownloadFailed(data);
+			return;
 		}
 
-
-		data.dir = dir;
-		data.fileName = fileName;
-		data.filePath = filePath;
-
-		if (fs.existsSync(filePath)) {
+		if (fs.existsSync(newData.filePath)) {
 			// file exists but isn't in database, skip directly to complete download callback
-			onDownloadSucceeded(data);
+			onDownloadSucceeded(newData);
 		} else {
 			let options = {
 				filter: "audioonly",
 				quality: "highestaudio"
 			};
-			let dl = ytdl('https://www.youtube.com/watch?v=' + data.videoId, options);
-			let ffmpeg = ffmpegSpawnDownloadInstance(data);
+			let dl = ytdl('https://www.youtube.com/watch?v=' + newData.videoId, options);
+			let ffmpeg = ffmpegSpawnDownloadInstance(newData);
 			dl.pipe(ffmpeg.stdin);
 		}
+	}
+
+	function createLibraryPath(data) {
+		let subFolder = "Misc";
+		// youtube music api has some inaccuracies with parsing, handle this as best we can
+		if (typeof data.artist === "object") {
+			// try to categorize by artist first, and is multiple artists, use first
+			if (Array.isArray(data.artist) && data.artist.length && data.artist[0].name) {
+				subFolder = data.artist[0].name;
+			} else if (data.artist.name) {
+				subFolder = data.artist.name;
+			}
+		} else if (typeof data.album === "object") {
+			// second try to categorize via album
+			if (Array.isArray(data.album) && data.album.length && data.album[0].name) {
+				subFolder = data.album[0].name;
+			} else if (data.album.name) {
+				subFolder = data.album.name;
+			}
+		}
+
+		let dir = path.join("./storage/music/", subFolder); 
+		let fileName = data.name + ".mp3";
+		let filePath = path.join(dir, fileName); 
+
+		// create folders if they do not exist yet
+		console.log("Path: " + filePath);
+		if (!fs.existsSync(dir)){
+			fs.mkdirSync(dir);
+		}
+
+		// merge both objects using spread operator
+		data.dir = dir;
+		data.fileName = fileName;
+		data.filePath = filePath;
+
+		return data;
 	}
 
 	function onDownloadSucceeded(data, isNew) {
 		console.log("download success");
 		downloading = false;
 
-		removeFromDownloadQueue(data.videoId);
+		removeFromDownloadQueue();
 
 		let inLibrary = library.get('songs')
 			.find({ videoId: data.videoId })
@@ -294,7 +336,7 @@ export default (app, http) => {
 	function onDownloadFailed(data) {
 		console.log("download failure");
 		downloading = false;
-		removeFromDownloadQueue(data.videoId);
+		removeFromDownloadQueue();
 		downloadNextInQueue();
 	}
 
