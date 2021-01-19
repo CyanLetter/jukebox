@@ -1,5 +1,6 @@
 const express = require('express');
 const fs = require('fs');
+const https = require('https');
 const path = require('path');
 
 // Database setup and access to collections
@@ -58,7 +59,7 @@ export default (app, http) => {
 			ytapi.search(req.params.query, "")
 				.then(result => {
 					// pre-sort into category based arrays
-					let sorted = sortSearchResults(result.content);
+					let sorted = sortSearchResults(result.content, req);
 					res.json({
 						content: sorted,
 						continuation: result.continuation
@@ -71,7 +72,7 @@ export default (app, http) => {
 			console.log("new search request for ", req.params.query, " in ", req.params.filter);
 			ytapi.search(req.params.query, req.params.filter)
 				.then(result => {
-					let sorted = sortSearchResults(result.content);
+					let sorted = sortSearchResults(result.content, req);
 					res.json({
 						content: sorted,
 						continuation: result.continuation
@@ -85,8 +86,7 @@ export default (app, http) => {
 			console.log("Requesting next search results page");
 			ytapi.searchNext(req.body.continuation, req.body.filter)
 				.then(result => {
-					console.log(result);
-					let sorted = sortSearchResults(result.content);
+					let sorted = sortSearchResults(result.content, req);
 					res.json({
 						content: sorted,
 						continuation: result.continuation
@@ -107,6 +107,9 @@ export default (app, http) => {
 			res.json({response: "skipping"});
 		});
 
+		// set express to serve static assets in thumbnails folder
+		app.use('/thumbnails', express.static('storage/art/thumbnails'));
+
 		// setup database defaults
 		library.defaults({ songs: [], artists: [], albums: [], thumbnails: []})
 			.write();
@@ -120,7 +123,7 @@ export default (app, http) => {
 		checkDownloadState();
 	}
 
-	function sortSearchResults(results) {
+	function sortSearchResults(results, req) {
 		let newResults = {
 			top: [],
 			song: [],
@@ -143,6 +146,26 @@ export default (app, http) => {
 				delete entry.thumbnails;
 			}
 
+			// check for locally saved thumbnail
+			try {
+				let localThumbnail = library.get('thumbnails')
+					.find({ url: entry.thumbnail.url })
+					.value();
+
+				if (localThumbnail) {
+					let fullUrl = req.protocol + '://' + req.get('host') + localThumbnail.localPath;
+					entry.thumbnail.url = fullUrl;
+				} else {
+					try	{
+						saveThumbnail(entry.thumbnail.url);
+					} catch (e) {
+						console.error(e);
+					}
+				}
+			} catch (e) {
+				console.error(e);
+			}
+
 			// skip types we have not accounted for
 			// typically playlists which have unique types, or videos
 			let type = entry.type;
@@ -153,7 +176,7 @@ export default (app, http) => {
 
 			// skip entries which do not have a valid name or video ID
 			// likely an issue with youtube results
-			if (typeof entry.videoId !== "string" || typeof entry.name !== "string") {
+			if (type === "song" && typeof entry.videoId !== "string" || typeof entry.name !== "string") {
 				continue;
 			}
 
@@ -440,6 +463,42 @@ export default (app, http) => {
 			playing = null;
 			playNextInQueue();
 		}
+	}
+
+	function saveThumbnail(url) {
+		// https://lh3.googleusercontent.com/LRmwC9OnuKW1oStH-y6_eKL81ub9pArkrHNczL1WSAVJ6qpwXnFDiXY20_XC1EkGR6szw4UDbG2vv3Jj=w120-h120-l90-rj
+
+		let folder = "./storage/art/thumbnails/";
+		let fileName = url.split("/").pop();
+		let localPath = folder + fileName + ".jpg";
+		// express set to serve static assets using different path prefix
+		let assetPath = "/thumbnails/" + fileName + ".jpg";
+
+		let callback = () => {
+
+			library.get('thumbnails')
+				.push({ 
+					url: url,
+					localPath: assetPath
+				})
+				.write();
+		}
+
+		saveImageToDisk(url, localPath, callback);
+	}
+
+	function saveImageToDisk(url, localPath, callback) {
+		let fullUrl = url;
+		let file = fs.createWriteStream(localPath);
+		let request = https.get(url, function(response) {
+			response.pipe(file);
+
+			try {
+				callback();
+			} catch (e) {
+				console.error(e);
+			}
+		});
 	}
 
 	init();

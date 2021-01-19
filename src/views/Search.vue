@@ -18,24 +18,24 @@
 			<button type="button" v-on:click="submitSearch">Search</button>
 		</form>
 
-		<section class="results">
-			<div v-if="searchType === 'all'">
-				<section v-for="(category, index) in searchResults" :key="index">
-					<h3> {{index}} </h3>
-					<ul>
-						<SearchEntry v-for="(entry, index) in category" :key="index" :entryData="entry" />
-					</ul>
-				</section>
-			</div>
-				
-			<div v-else>
-				<section>
-					<h3> {{ searchType }} </h3>
-					<ul>
-						<SearchEntry v-for="(entry, index) in searchResults[searchType]" :key="index" :entryData="entry" />
-					</ul>
-				</section>
-			</div>
+		<section v-if="searchType === 'all'" class="results">
+			<section class="category" v-for="(category, index) in searchResults" :key="index">
+				<h3 class="section-header"> {{index}} </h3>
+				<ul class="entry-container">
+					<SearchEntry v-for="(entry, index) in category" :key="index" :entryData="entry" />
+				</ul>
+			</section>
+
+			<button type="button" v-on:click="nextSearchPage">Next</button>
+		</section>
+
+		<section v-else class="results">
+			<section class="category">
+				<h3 class="section-header"> {{ searchType }} </h3>
+				<ul class="entry-container">
+					<SearchEntry v-for="(entry, index) in searchResults[searchType]" :key="index" :entryData="entry" />
+				</ul>
+			</section>
 
 			<button type="button" v-on:click="nextSearchPage">Next</button>
 		</section>
@@ -152,3 +152,30 @@
 		}
 	}
 </script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped lang="scss">
+	.results {
+		width: 100%;
+		max-width: 500px;
+		margin: 0 auto;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+
+		.category {
+			width: 100%;
+		}
+
+		.section-header {
+			text-transform: capitalize;
+			text-align: left;
+			margin: 0;
+			padding: 10px;
+		}
+
+		.entry-container {
+			margin: 0;
+		}
+	}
+</style>

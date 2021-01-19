@@ -1,6 +1,9 @@
 <template>
 	<li class="entry" v-on:click="selectEntry">
-		{{ entryData.name }}
+		<img :src="entryData.thumbnail.url">
+		<p>
+			{{ entryData.name }}
+		</p>
 	</li>
 </template>
 
@@ -35,5 +38,32 @@
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
-	
+	.entry {
+		display: flex;
+		align-items: center;
+		width: 100%;
+
+		padding: 3px;
+		border-bottom: 1px solid #333;
+		cursor: pointer;
+		transition: 0.2s;
+
+		&:hover {
+			transition: 0s;
+			background: #ccc;
+		}
+
+		&:first-child {
+			border-top: 1px solid #333;
+		}
+
+		img {
+			height: 40px;
+			margin-right: 20px;
+		}
+
+		p {
+			margin: 0;
+		}
+	}
 </style>
