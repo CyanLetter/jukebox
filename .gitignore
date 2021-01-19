@@ -1,7 +1,8 @@
 .DS_Store
 node_modules
 /dist
-
+# music library files and database - don't commit downloaded music
+/storage
 
 # local env files
 .env.local

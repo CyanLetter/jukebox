@@ -5,26 +5,31 @@
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
-    "lint": "vue-cli-service lint"
+    "lint": "vue-cli-service lint",
+    "express": "vue-cli-service express:watch --port 6400",
+    "express:run": "vue-cli-service express:run --port 6400"
   },
   "dependencies": {
+    "@vue/cli-service": "~4.5.0",
+    "connect-history-api-fallback": "^1.6.0",
     "core-js": "^3.6.5",
+    "ffplay": "^1.1.0",
+    "lowdb": "^1.0.0",
     "vue": "^2.6.11",
-    "vue-router": "^3.2.0"
+    "vue-router": "^3.2.0",
+    "youtube-music-api": "file:../../../../Git/youtube-music-api",
+    "ytdl-core": "^4.4.3"
   },
   "devDependencies": {
     "@vue/cli-plugin-babel": "~4.5.0",
     "@vue/cli-plugin-eslint": "~4.5.0",
     "@vue/cli-plugin-router": "~4.5.0",
-    "@vue/cli-service": "~4.5.0",
-    "@vue/eslint-config-prettier": "^6.0.0",
     "babel-eslint": "^10.1.0",
     "eslint": "^6.7.2",
-    "eslint-plugin-prettier": "^3.1.3",
     "eslint-plugin-vue": "^6.2.2",
     "node-sass": "^4.12.0",
-    "prettier": "^1.19.1",
     "sass-loader": "^8.0.2",
+    "vue-cli-plugin-express": "~1.0.2",
     "vue-template-compiler": "^2.6.11"
   },
   "eslintConfig": {
@@ -34,13 +39,27 @@
     },
     "extends": [
       "plugin:vue/essential",
-      "eslint:recommended",
-      "@vue/prettier"
+      "eslint:recommended"
     ],
     "parserOptions": {
       "parser": "babel-eslint"
     },
-    "rules": {}
+    "rules": {
+      "vue/script-indent": [
+        "error",
+        "tab",
+        {
+          "baseIndent": 1
+        }
+      ],
+      "vue/html-indent": [
+        "error",
+        "tab",
+        {
+          "baseIndent": 1
+        }
+      ]
+    }
   },
   "browserslist": [
     "> 1%",
