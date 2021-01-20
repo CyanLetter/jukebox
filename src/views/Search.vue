@@ -2,6 +2,7 @@
 	<div class="search-container">
 		<div class="controls">
 			<button type="button" v-on:click="skipSong">Skip</button>
+			<OSCControls/>
 		</div>
 
 		<h1>Search</h1>
@@ -44,11 +45,13 @@
 
 <script>
 	import SearchEntry from "@/components/SearchEntry.vue";
+	import OSCControls from "@/components/OSCControls.vue";
 	
 	export default {
 		name: 'Search',
 		components: {
-			SearchEntry
+			SearchEntry,
+			OSCControls
 		},
 		data() {
 			return {

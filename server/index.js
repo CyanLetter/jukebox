@@ -15,6 +15,8 @@ const library = low(libraryAdapter);
 const queue = low(queueAdapter);
 const collections = low(collectionsAdapter);
 
+// various network communication packages
+const osc = require("osc");
 // import socketIO from "socket.io";
 
 const { spawn } = require("child_process");
@@ -30,6 +32,11 @@ var playing = null;
 var downloading = false;
 var autoplay = false;
 var player = null;
+
+var oscPort = null;
+var oscReady = false;
+const oscTargetIp = "192.168.0.15";
+const oscTargetPort = "6555";
 
 export default (app, http) => {
 	// optional support for socket.io
@@ -107,6 +114,12 @@ export default (app, http) => {
 			res.json({response: "skipping"});
 		});
 
+		app.post('/api/controls/osc', (req, res) => {
+			console.log("Sending ", req.body.message, "on", req.body.path);
+			sendOscMessage(req.body.address, req.body.message);
+			res.json({response: "sending OSC message"});
+		});
+
 		// set express to serve static assets in thumbnails folder
 		app.use('/thumbnails', express.static('storage/art/thumbnails'));
 
@@ -117,6 +130,24 @@ export default (app, http) => {
 			.write();
 		collections.defaults({ history: [], playlists: []})
 			.write();
+
+		// Set up OSC port
+		oscPort = new osc.UDPPort({
+			localAddress: "0.0.0.0",
+			localPort: 57121,
+			metadata: true
+		});
+
+		oscPort.on("message", (oscMsg, timeTag, info) => {
+			console.log("OSC Message Received", oscMsg);
+			console.log("Remote info is: ", info);
+		});
+
+		oscPort.on("ready", () => {
+			oscReady = true;
+		});
+
+		oscPort.open();
 
 		// if items are still in playlist, start where we left off
 		checkPlaybackState();
@@ -499,6 +530,23 @@ export default (app, http) => {
 				console.error(e);
 			}
 		});
+	}
+
+	function sendOscMessage(address, message) {
+		if (!oscReady) {
+			console.error("OSC Port not open, cancelling message send");
+			return;
+		}
+
+		try	{
+			oscPort.send({
+				address: address,
+				args: message
+			}, oscTargetIp, oscTargetPort);
+			console.log("Message sent");
+		} catch(e) {
+			console.error(e);
+		}
 	}
 
 	init();
